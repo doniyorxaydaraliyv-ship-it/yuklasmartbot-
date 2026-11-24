@@ -65,6 +65,18 @@ Bot noutbuk yoqilganda o'z-o'zidan ishga tushishi va o'chib qolsa qayta ishga tu
 - Yana bosish — botni **o'chiradi** 🛑
 - Yana bosish — yana yoqadi (cheksiz almashinadi)
 
+### ⌨️ Terminaldan boshqarish
+```powershell
+cd "C:\Users\USER\Documents\Default Project\telegram-downloader-bot"
+
+bot.cmd start     # botni yoqish
+bot.cmd stop      # botni o'chirish
+bot.cmd restart   # qayta ishga tushirish
+bot.cmd status    # holatini ko'rish
+bot.cmd toggle    # yoqish/o'chirish (almashib turadi)
+```
+Yoki to'g'ridan-to'g'ri: `npm start` (shu oynada ishga tushiradi, `Ctrl+C` bilan to'xtatiladi).
+
 ### Boshqa fayllar
 | Fayl | Vazifasi |
 |------|----------|
