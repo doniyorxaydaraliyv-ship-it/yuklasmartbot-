@@ -189,7 +189,7 @@ function bar(percent) {
 bot.catch((err) => console.error("Bot xatosi:", err));
 
 // Bulut platformalari (Render/Koyeb) port ochishni talab qiladi — sog'liq tekshiruvi
-const PORT = process.env.PORT || 3000;
+const PORT = process.env.PORT || 3100;
 http
   .createServer((_req, res) => {
     res.writeHead(200, { "Content-Type": "text/plain; charset=utf-8" });
