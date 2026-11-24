@@ -52,6 +52,24 @@ Birinchi ishga tushirishda `yt-dlp` avtomatik yuklab olinadi (`bin/` papkasiga).
 | `.env` | Bot tokeni (maxfiy!) |
 | `bin/` | yt-dlp binary (avtomatik yuklanadi) |
 
+## 💻 Noutbukda avtomatik ishga tushirish
+
+Bot noutbuk yoqilganda o'z-o'zidan ishga tushishi va o'chib qolsa qayta ishga tushishi uchun:
+
+1. **Bir marta:** `avtostart.reg` faylini ikki marta bosing (muloqot oynasida **Ha / Yes** ni tanlang). Bu Windows'ga kirishda botni avtomatik ishga tushirishni qo'shadi.
+2. Keyin har gal noutbuk yoqilib, tizimga kirganingizda bot fonada ishga tushadi — hech narsa qilish kerak emas.
+
+### Qo'lda boshqarish
+| Fayl | Vazifasi |
+|------|----------|
+| `start-bot.cmd` | Ikki marta bosilsa — botni fonada ishga tushiradi |
+| `stop-bot.ps1` | Botni to'xtatadi (`powershell -File stop-bot.ps1`) |
+| `start-bot.ps1` | Kuzatuvchi skript (bot o'chsa 10 soniyada qayta ishga tushiradi) |
+
+Loglar: `bot.log` va `bot-error.log`.
+
+> Eslatma: `avtostart.reg` faqat **joriy foydalanuvchi** uchun qo'shiladi, admin huquqi kerak emas.
+
 ## ☁️ Bepul bulutga joylashtirish (Render)
 
 Bot 24/7 ishlashi uchun (kompyuter o'chsa ham):

@@ -5,3 +5,4 @@ downloads/
 bot.log
 bot-error.log
 *.log
+.bot-lock
