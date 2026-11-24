@@ -56,7 +56,7 @@ Birinchi ishga tushirishda `yt-dlp` avtomatik yuklab olinadi (`bin/` papkasiga).
 
 Bot noutbuk yoqilganda o'z-o'zidan ishga tushishi va o'chib qolsa qayta ishga tushishi uchun:
 
-1. **Bir marta:** **`AVTO-START-O'RNATISH.cmd`** faylini ikki marta bosing. Ekranda `✅ AVTO-START O'RNATILDI!` chiqishi kerak. (Agar chiqmasa, `avtostart.reg` ni sinab ko'ring yoki qo'lda Task Scheduler orqali qo'shing.)
+1. **Bir marta (qo'lda):** `Win + R` → `shell:startup` → Enter. Ochilgan papkaga loyihadagi **`launch-bot.cmd`** faylini nusxalang. Shundan keyin noutbuk yoqilganda bot avtomatik ishga tushadi. (Registry yozish bloklangan bo'lsa ham bu usul ishlaydi.)
 2. Keyin har gal noutbuk yoqilib, tizimga kirganingizda bot fonada ishga tushadi — hech narsa qilish kerak emas.
 
 ### 🎛 Yoqib / o'chirib turish (eng oson)
