@@ -2,3 +2,6 @@ node_modules/
 bin/
 .env
 downloads/
+bot.log
+bot-error.log
+*.log
