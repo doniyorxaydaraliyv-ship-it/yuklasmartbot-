@@ -52,21 +52,24 @@ export function download(ytdlp, url, mode, onProgress = () => {}) {
       "--max-filesize", "50M",
       "--ffmpeg-location", ffmpegPath,
       "--socket-timeout", "30",
-      "--retries", "3",
+      "--retries", "2",
+      // Segmentlarni parallel yuklab olish — DASH/HLS uchun tezlikni oshiradi
+      "--concurrent-fragments", "8",
     ];
 
     if (mode === "audio") {
+      // Agar manba allaqachon MP3 bo'lsa, qayta kodlashsiz olinadi
       args.push(
-        "-f", "bestaudio/best",
+        "-f", "bestaudio[ext=mp3]/bestaudio/best",
         "-x",
         "--audio-format", "mp3",
-        "--audio-quality", "128K"
+        "--audio-quality", "96K"
       );
     } else {
+      // Bitta fayl (video+audio birga) — ffmpeg bilan birlashtirish bosqichi yo'q
       args.push(
         "-f",
-        "bestvideo[height<=720][ext=mp4]+bestaudio[ext=m4a]/best[ext=mp4]/best",
-        "--merge-output-format", "mp4"
+        "best[ext=mp4][height<=720]/best[height<=720]/best[ext=mp4]/best"
       );
     }
 
