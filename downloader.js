@@ -37,9 +37,10 @@ export async function ensureYtDlp() {
  * @param {(percent:number)=>void} onProgress
  * @returns {Promise<{file:string, dir:string, size:number}>}
  */
-export function download(ytdlp, url, mode, onProgress = () => {}) {
+export function download(ytdlp, url, mode, onProgress = () => {}, options = {}) {
   return new Promise((resolve, reject) => {
     const dir = fs.mkdtempSync(path.join(os.tmpdir(), "tgbot-"));
+    let cancelled = false;
     const outputTemplate = path.join(dir, "%(title).80B.%(ext)s");
 
     const args = [
@@ -67,13 +68,20 @@ export function download(ytdlp, url, mode, onProgress = () => {}) {
       );
     } else {
       // Bitta fayl (video+audio birga) — ffmpeg bilan birlashtirish bosqichi yo'q
+      const h = options.quality === "480" ? "480" : "720";
       args.push(
         "-f",
-        "best[ext=mp4][height<=720]/best[height<=720]/best[ext=mp4]/best"
+        `best[ext=mp4][height<=${h}]/best[height<=${h}]/best[ext=mp4]/best`
       );
     }
 
     const proc = ytdlp.exec(args);
+    // Tashqi tomondan bekor qilish imkoniyati (/cancel buyrug'i uchun)
+    options.onStart?.(() => {
+      cancelled = true;
+      const child = proc.ytDlpProcess ?? proc;
+      if (typeof child.kill === "function") child.kill();
+    });
     let stderr = "";
     let lastPercent = -1;
 
@@ -98,6 +106,11 @@ export function download(ytdlp, url, mode, onProgress = () => {}) {
     });
 
     proc.on("close", (code) => {
+      if (cancelled) {
+        cleanup(dir);
+        reject(new Error("CANCELLED"));
+        return;
+      }
       if (code !== 0) {
         cleanup(dir);
         const reason = stderr.trim().split("\n").pop() || `yt-dlp xato kodi: ${code}`;

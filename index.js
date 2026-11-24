@@ -30,6 +30,7 @@ let linkCounter = 0;
 
 // Bir foydalanuvchi bir vaqtda faqat bitta yuklash qiladi
 const busyUsers = new Set();
+const cancellations = new Map(); // userId -> bekor qilish funksiyasi
 
 const URL_RE = /https?:\/\/[^\s]+/i;
 
@@ -93,10 +94,29 @@ const WELCOME =
   "Men video va musiqa yuklovchi botman. 📥\n\n" +
   "Menga YouTube, Instagram, TikTok yoki boshqa sayt havolasini yuboring — " +
   "men uni video (MP4) yoki musiqa (MP3) ko'rinishida yuklab beraman.\n\n" +
+  "🎬 Video 720p / 🎞 Video 480p / 🎵 MP3 — siz tanlaysiz.\n\n" +
+  "Buyruqlar:\n" +
+  "/status — yuklash holati\n" +
+  "/cancel — yuklashni bekor qilish\n\n" +
   "⚠️ Telegram cheklovi: fayl hajmi 50 MB dan oshmasligi kerak.";
 
 bot.start((ctx) => ctx.reply(WELCOME));
 bot.help((ctx) => ctx.reply(WELCOME));
+bot.command("status", (ctx) =>
+  ctx.reply(
+    busyUsers.has(ctx.from.id)
+      ? "⏳ Hozir siz uchun fayl yuklanayapti. /cancel bilan bekor qilishingiz mumkin."
+      : "✅ Hozir hech narsa yuklanayotgani yo'q. Havola yuboring!"
+  )
+);
+bot.command("cancel", (ctx) => {
+  const cancel = cancellations.get(ctx.from.id);
+  if (cancel) {
+    cancel();
+    return ctx.reply("🛑 Yuklash bekor qilindi.");
+  }
+  return ctx.reply("Bekor qilinadigan yuklash yo'q.");
+});
 
 // Havola yuborilganda — format tanlash tugmalari
 bot.on("text", async (ctx) => {
@@ -111,12 +131,13 @@ bot.on("text", async (ctx) => {
   if (links.size > 500) links.delete(links.keys().next().value);
 
   await ctx.reply(
-    "Qanday formatda yuklab beray? 🤔",
+    "Qanday formatda yuklab beray? 🤔\n(480p — kichikroq fayl, tezroq yuboriladi)",
     Markup.inlineKeyboard([
       [
-        Markup.button.callback("🎬 Video (MP4)", `v:${id}`),
-        Markup.button.callback("🎵 Musiqa (MP3)", `a:${id}`),
+        Markup.button.callback("🎬 Video 720p", `v720:${id}`),
+        Markup.button.callback("🎞 Video 480p", `v480:${id}`),
       ],
+      [Markup.button.callback("🎵 Musiqa (MP3)", `a:${id}`)],
     ])
   );
 });
@@ -126,19 +147,20 @@ bot.on("callback_query", async (ctx) => {
   const data = ctx.callbackQuery.data || "";
   const [type, id] = data.split(":");
   const url = links.get(id);
-  if (!url || !["v", "a"].includes(type)) {
+  if (!url || !["v720", "v480", "a"].includes(type)) {
     return ctx.answerCbQuery("Bu tugma eskirgan. Havolani qayta yuboring.");
   }
-  await ctx.answerCbQuery("Yuklash boshlandi ⏳");
 
   const userId = ctx.from.id;
   if (busyUsers.has(userId)) {
-    return ctx.reply("⏳ Sizda allaqachon yuklanayotgan fayl bor. Avval uni kutib turing.");
+    return ctx.answerCbQuery("Sizda allaqachon yuklanayotgan fayl bor!");
   }
+  await ctx.answerCbQuery("Yuklash boshlandi ⏳");
   busyUsers.add(userId);
 
   const mode = type === "a" ? "audio" : "video";
-  const label = mode === "audio" ? "🎵 Musiqa" : "🎬 Video";
+  const quality = type === "v480" ? "480" : "720";
+  const label = mode === "audio" ? "🎵 Musiqa" : `🎬 Video ${quality}p`;
   const status = await ctx.reply(`${label} yuklanmoqda... 0% ⏳`);
 
   // Progress xabarini yangilash (Telegram limitiga tushmaslik uchun sekinroq)
@@ -155,7 +177,10 @@ bot.on("callback_query", async (ctx) => {
 
   let result;
   try {
-    result = await download(ytdlp, url, mode, onProgress);
+    result = await download(ytdlp, url, mode, onProgress, {
+      quality,
+      onStart: (cancel) => cancellations.set(userId, cancel),
+    });
     await notify(ctx, status, `${label} tayyor! Telegramga yuborilmoqda... 📤`);
 
     await sendWithRetry(() => uploadFile(ctx.chat.id, result.file, mode));
@@ -163,7 +188,9 @@ bot.on("callback_query", async (ctx) => {
   } catch (err) {
     console.error("Yuklash xatosi:", err.message);
     let msg;
-    if (err.message === "TOO_BIG") {
+    if (err.message === "CANCELLED") {
+      msg = "🛑 Yuklash bekor qilindi.";
+    } else if (err.message === "TOO_BIG") {
       msg = "😔 Fayl 50 MB dan katta — Telegram orqali yubora olmayman. Qisqaroq video tanlang.";
     } else if (/private|login|sign in|cookies/i.test(err.message)) {
       msg = "🔒 Bu video yopiq yoki login talab qiladi. Ochiq video havolasini yuboring.";
@@ -178,6 +205,7 @@ bot.on("callback_query", async (ctx) => {
   } finally {
     if (result) cleanup(result.dir);
     busyUsers.delete(userId);
+    cancellations.delete(userId);
   }
 });
 
