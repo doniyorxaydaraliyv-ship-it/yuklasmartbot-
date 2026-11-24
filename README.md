@@ -59,7 +59,13 @@ Bot noutbuk yoqilganda o'z-o'zidan ishga tushishi va o'chib qolsa qayta ishga tu
 1. **Bir marta:** `avtostart.reg` faylini ikki marta bosing (muloqot oynasida **Ha / Yes** ni tanlang). Bu Windows'ga kirishda botni avtomatik ishga tushirishni qo'shadi.
 2. Keyin har gal noutbuk yoqilib, tizimga kirganingizda bot fonada ishga tushadi — hech narsa qilish kerak emas.
 
-### Qo'lda boshqarish
+### 🎛 Yoqib / o'chirib turish (eng oson)
+**`BOT-YOQ-OCHIR.cmd`** faylini ikki marta bosing:
+- Birinchi bosish — botni **yoqadi** ✅
+- Yana bosish — botni **o'chiradi** 🛑
+- Yana bosish — yana yoqadi (cheksiz almashinadi)
+
+### Boshqa fayllar
 | Fayl | Vazifasi |
 |------|----------|
 | `start-bot.cmd` | Ikki marta bosilsa — botni fonada ishga tushiradi |
