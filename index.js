@@ -196,10 +196,16 @@ bot.on("callback_query", async (ctx) => {
       msg = "🔒 Bu video yopiq yoki login talab qiladi. Ochiq video havolasini yuboring.";
     } else if (/unsupported url/i.test(err.message)) {
       msg = "❌ Bu sayt qo'llab-quvvatlanmaydi. YouTube, Instagram yoki TikTok havolasini yuboring.";
+    } else if (/403|429|too many requests|rate limit|forbidden/i.test(err.message)) {
+      msg = "🚫 Sayt so'rovni rad etdi (masalan, bot aniqlangan yoki limit tugagan). Biroz kutib, boshqa havola bilan qayta urining.";
+    } else if (/ffmpeg|postprocess/i.test(err.message)) {
+      msg = "🎞 Faylni qayta ishlashda xatolik. Boshqa formatni (MP3 yoki 480p) sinab ko'ring.";
     } else if (/socket hang up|ECONNRESET|ETIMEDOUT|fetch failed|sendAudio|sendVideo/i.test(err.message)) {
-      msg = "📤 Faylni yuborishda aloqa uzildi (3 marta urindik). Internetni tekshirib, qayta urinib ko'ring.";
+      msg = "📤 Faylni yuborishda aloqa uzildi. Internetni tekshirib, qayta urinib ko'ring.";
     } else {
-      msg = "❌ Yuklab olishda xatolik yuz berdi. Havolani tekshirib, qayta urinib ko'ring.";
+      // Aniq sababni ham ko'rsatamiz — keyingi safar tez tuzatish uchun
+      const detail = String(err.message).replace(/\s+/g, " ").slice(0, 200);
+      msg = `❌ Yuklab olishda xatolik: ${detail}`;
     }
     await notify(ctx, status, msg);
   } finally {

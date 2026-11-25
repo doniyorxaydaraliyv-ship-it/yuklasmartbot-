@@ -56,6 +56,9 @@ export function download(ytdlp, url, mode, onProgress = () => {}, options = {}) 
       "--retries", "2",
       // Segmentlarni parallel yuklab olish — DASH/HLS uchun tezlikni oshiradi
       "--concurrent-fragments", "8",
+      // Bulutda YouTube challenge'larini hal qilish uchun JS muhiti
+      "--js-runtimes", "node",
+      "--remote-components", "ejs:github",
     ];
 
     if (mode === "audio") {
