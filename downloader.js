@@ -17,12 +17,38 @@ const BIN_PATH = path.join(
 // Telegram Bot API orqali maksimal 50 MB fayl yuborish mumkin
 export const MAX_FILE_SIZE = 49 * 1024 * 1024;
 
-/** yt-dlp binary'sini tekshiradi, yo'q bo'lsa GitHub'dan yuklab oladi */
+// GitHub API ishlatilmaydi — bulutlarda umumiy IP tufayli API limiti (60/soat) tugashi mumkin
+const YTDLP_ASSET = process.platform === "win32" ? "yt-dlp.exe" : "yt-dlp_linux";
+const YTDLP_URLS = [
+  `https://github.com/yt-dlp/yt-dlp/releases/latest/download/${YTDLP_ASSET}`,
+  `https://github.com/yt-dlp/yt-dlp/releases/download/2026.10.26/${YTDLP_ASSET}`,
+];
+
+async function fetchBinary(url, dest) {
+  const res = await fetch(url, {
+    redirect: "follow",
+    signal: AbortSignal.timeout(3 * 60 * 1000),
+  });
+  if (!res.ok) throw new Error(`HTTP ${res.status} — ${url}`);
+  fs.writeFileSync(dest, Buffer.from(await res.arrayBuffer()));
+}
+
+/** yt-dlp binary'sini tekshiradi, yo'q bo'lsa to'g'ridan-to'g'ri URL'dan yuklaydi */
 export async function ensureYtDlp() {
   fs.mkdirSync(BIN_DIR, { recursive: true });
   if (!fs.existsSync(BIN_PATH)) {
-    console.log("yt-dlp yuklab olinmoqda (birinchi ishga tushirish)...");
-    await YTDlpWrap.downloadFromGithub(BIN_PATH);
+    console.log("yt-dlp yuklab olinmoqda (GitHub API'siz)...");
+    let downloaded = false;
+    for (const url of YTDLP_URLS) {
+      try {
+        await fetchBinary(url, BIN_PATH);
+        downloaded = true;
+        break;
+      } catch (err) {
+        console.error("yt-dlp yuklab olish xatosi:", err.message);
+      }
+    }
+    if (!downloaded) throw new Error("yt-dlp yuklab olinmadi — keyinroq qayta urining");
     if (process.platform !== "win32") fs.chmodSync(BIN_PATH, 0o755);
     console.log("yt-dlp tayyor:", BIN_PATH);
   }
