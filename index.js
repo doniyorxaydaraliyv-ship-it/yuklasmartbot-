@@ -231,7 +231,19 @@ http
   })
   .listen(PORT, () => console.log(`Health server: port ${PORT}`));
 
-bot.launch(() => console.log("✅ Bot ishga tushdi! Telegram'da /start bosing."));
+// Polling xatoliganda (masalan, boshqa bot instance bilan 409 Conflict) avtomatik qayta urinadi
+async function startPolling() {
+  try {
+    await bot.launch({ dropPendingUpdates: true }, () =>
+      console.log("✅ Bot ishga tushdi! Telegram'da /start bosing.")
+    );
+  } catch (err) {
+    console.error("Bot polling xatosi:", err.message, "- 10 soniyada qayta urinaman");
+    setTimeout(startPolling, 10000);
+  }
+}
+
+startPolling();
 
 process.once("SIGINT", () => bot.stop("SIGINT"));
 process.once("SIGTERM", () => bot.stop("SIGTERM"));
