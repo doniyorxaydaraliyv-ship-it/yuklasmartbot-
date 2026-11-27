@@ -222,10 +222,23 @@ function bar(percent) {
 
 bot.catch((err) => console.error("Bot xatosi:", err));
 
-// Bulut platformalari (Render/Koyeb) port ochishni talab qiladi — sog'liq tekshiruvi
+// Bulut platformalari (Render/Koyeb) port ochishni talab qiladi.
+// Webhook rejimi: Telegram xabari kelganda servis uyg'onadi va xabarni qayta ishlaydi.
 const PORT = process.env.PORT || 3100;
 http
-  .createServer((_req, res) => {
+  .createServer(async (req, res) => {
+    if (req.method === "POST" && req.url === "/telegram") {
+      let body = "";
+      try {
+        for await (const chunk of req) body += chunk;
+        await bot.handleUpdate(JSON.parse(body));
+      } catch (err) {
+        console.error("Webhook xatosi:", err.message);
+      }
+      res.writeHead(200, { "Content-Type": "text/plain" });
+      res.end("ok");
+      return;
+    }
     res.writeHead(200, { "Content-Type": "text/plain; charset=utf-8" });
     res.end("YuklaSmartBot ishlayapti ✅");
   })
@@ -235,7 +248,7 @@ http
 async function startPolling() {
   try {
     await bot.launch({ dropPendingUpdates: true }, () =>
-      console.log("✅ Bot ishga tushdi! Telegram'da /start bosing.")
+      console.log("✅ Bot ishga tushdi (polling)! Telegram'da /start bosing.")
     );
   } catch (err) {
     console.error("Bot polling xatosi:", err.message, "- 10 soniyada qayta urinaman");
@@ -243,7 +256,22 @@ async function startPolling() {
   }
 }
 
-startPolling();
+// Render bulutida RENDER_EXTERNAL_URL avtomatik beriladi — webhook ishlatamiz
+const WEBHOOK_URL = process.env.RENDER_EXTERNAL_URL
+  ? `${process.env.RENDER_EXTERNAL_URL}/telegram`
+  : process.env.WEBHOOK_URL;
+
+if (WEBHOOK_URL) {
+  try {
+    await bot.telegram.setWebhook(WEBHOOK_URL, { drop_pending_updates: true });
+    console.log("✅ Webhook o'rnatildi:", WEBHOOK_URL);
+  } catch (err) {
+    console.error("Webhook xatosi, pollingga o'tiladi:", err.message);
+    startPolling();
+  }
+} else {
+  startPolling();
+}
 
 process.once("SIGINT", () => bot.stop("SIGINT"));
 process.once("SIGTERM", () => bot.stop("SIGTERM"));
