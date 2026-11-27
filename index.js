@@ -214,6 +214,7 @@ async function sendWithRetry(sendFn) {
 
 // Faylni Telegram'ga yuborish (Node ichki fetch — tez va ishonchli)
 async function uploadFile(chatId, file, mode) {
+  const t0 = Date.now();
   const bytes = fs.readFileSync(file);
   const filename = path.basename(file);
   const form = new FormData();
@@ -222,8 +223,11 @@ async function uploadFile(chatId, file, mode) {
   let method;
   if (mode === "audio") {
     method = "sendAudio";
-    form.append("audio", new Blob([bytes], { type: "audio/mpeg" }), filename);
-    form.append("title", filename.replace(/\.mp3$/i, "").slice(0, 64));
+    const ext = path.extname(filename).toLowerCase();
+    const mime =
+      ext === ".m4a" ? "audio/mp4" : ext === ".ogg" ? "audio/ogg" : "audio/mpeg";
+    form.append("audio", new Blob([bytes], { type: mime }), filename);
+    form.append("title", filename.replace(/\.[^.]+$/, "").slice(0, 64));
   } else {
     method = "sendVideo";
     form.append("video", new Blob([bytes], { type: "video/mp4" }), filename);
@@ -236,6 +240,7 @@ async function uploadFile(chatId, file, mode) {
     signal: AbortSignal.timeout(10 * 60 * 1000),
   });
   const data = await res.json();
+  console.log(`[TIME] ${method} yuborildi: ${Date.now() - t0}ms`);
   if (!data.ok) throw new Error(data.description || "Telegram API xatosi");
   return data;
 }
@@ -375,6 +380,9 @@ bot.on("callback_query", async (ctx) => {
       onStart: (cancel) => cancellations.set(uid, cancel),
     });
     await notify(ctx, status, tr(uid, "ready", label));
+    await ctx.telegram
+      .sendChatAction(ctx.chat.id, mode === "audio" ? "upload_audio" : "upload_video")
+      .catch(() => {});
     await sendWithRetry(() => uploadFile(ctx.chat.id, result.file, mode));
     await ctx.telegram.deleteMessage(ctx.chat.id, status.message_id).catch(() => {});
   } catch (err) {

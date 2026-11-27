@@ -66,6 +66,8 @@ export async function ensureYtDlp() {
 export function download(ytdlp, url, mode, onProgress = () => {}, options = {}) {
   return new Promise((resolve, reject) => {
     const dir = fs.mkdtempSync(path.join(os.tmpdir(), "tgbot-"));
+    const t0 = Date.now();
+    console.log(`[TIME] yuklash boshlandi: ${mode} ${url.slice(0, 80)}`);
     let cancelled = false;
     const outputTemplate = path.join(dir, "%(title).80B.%(ext)s");
 
@@ -88,13 +90,9 @@ export function download(ytdlp, url, mode, onProgress = () => {}, options = {}) 
     ];
 
     if (mode === "audio") {
-      // Agar manba allaqachon MP3 bo'lsa, qayta kodlashsiz olinadi
-      args.push(
-        "-f", "bestaudio[ext=mp3]/bestaudio/best",
-        "-x",
-        "--audio-format", "mp3",
-        "--audio-quality", "96K"
-      );
+      // ffmpeg umuman ishlatilmaydi — tayyor audio faylni olib, to'g'ridan yuboramiz
+      // (bu MP3 ga qayta kodlashdan ancha tezroq)
+      args.push("-f", "bestaudio[ext=m4a]/bestaudio[ext=mp3]/bestaudio/best");
     } else {
       // Bitta fayl (video+audio birga) — ffmpeg bilan birlashtirish bosqichi yo'q
       const h = ["480", "720", "1080"].includes(options.quality)
@@ -167,6 +165,7 @@ export function download(ytdlp, url, mode, onProgress = () => {}, options = {}) 
         reject(new Error("TOO_BIG"));
         return;
       }
+      console.log(`[TIME] yuklash tugadi: ${mode} ${Date.now() - t0}ms, ${size} bayt`);
       resolve({ file, dir, size });
     });
   });
