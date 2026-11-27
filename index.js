@@ -37,15 +37,24 @@ const LANGS = {
 const T = {
   uz: {
     welcome: () =>
-      "👋 Assalomu alaykum!\n\nMen video va musiqa yuklovchi botman. 📥\n" +
-      "YouTube, Instagram, TikTok yoki boshqa sayt havolasini yuboring.\n\n" +
-      "🎥 1080p / 🎬 720p / 🎞 480p / 🎵 MP3 — siz tanlaysiz.\n\n" +
-      "Buyruqlar:\n/status — yuklash holati\n/cancel — bekor qilish\n" +
-      "/language — tilni o'zgartirish\n\n⚠️ Fayl 50 MB dan katta bo'lmasligi kerak.",
+      "╭━━━━━━━━━━━━━━━━━━╮\n" +
+      "┃  <b>🎬 YuklaSmartBot</b>  ┃\n" +
+      "╰━━━━━━━━━━━━━━━━━━╯\n\n" +
+      "Assalomu alaykum! Men <b>video</b> va <b>musiqa</b> yuklab beraman 📥\n\n" +
+      "▫️ Havola yuboring: <i>YouTube, Instagram, TikTok...</i>\n" +
+      "▫️ Formatni tanlang: <b>1080p / 720p / 480p / MP3</b>\n\n" +
+      "⚡ <b>480p</b> — eng tez variant\n" +
+      "📏 Fayl limiti: <b>50 MB</b>\n\n" +
+      "Pastdagi tugmalardan foydalaning 👇",
     selectLang: () => "🌐 Tilni tanlang:",
     langSet: (n) => `✅ Til tanlandi: ${n}\n\nHavola yuboring yoki /start bosing.`,
     askLink: () => "🔗 Iltimos, video havolasini yuboring.\nMasalan: https://youtube.com/watch?v=...",
-    askFormat: () => "Qanday formatda yuklab beray? 🤔\n(480p — eng kichik va tez)",
+    askFormat: () =>
+      "<b>🎯 Formatni tanlang</b>\n\n" +
+      "🎥 1080p — yuqori sifat\n" +
+      "🎬 720p — o'rtacha\n" +
+      "🎞 480p — <i>eng kichik va tez</i>\n" +
+      "🎵 MP3 — faqat musiqa",
     b1080: () => "🎥 Video 1080p",
     b720: () => "🎬 Video 720p",
     b480: () => "🎞 Video 480p",
@@ -67,18 +76,31 @@ const T = {
     statusBusy: () => "⏳ Hozir fayl yuklanayapti. /cancel bilan bekor qiling.",
     statusIdle: () => "✅ Hozir hech narsa yuklanayotgani yo'q. Havola yuboring!",
     cancelNone: () => "Bekor qilinadigan yuklash yo'q.",
+    menuLink: () => "📥 Havola yuborish",
+    menuLang: () => "🌐 Tilni o'zgartirish",
+    menuHelp: () => "ℹ️ Qanday ishlaydi?",
+    howto: () => "🔗 Menga video havolasini yuboring.\nMasalan: <code>https://youtube.com/watch?v=...</code>",
   },
   ru: {
     welcome: () =>
-      "👋 Здравствуйте!\n\nЯ бот для скачивания видео и музыки. 📥\n" +
-      "Отправьте ссылку с YouTube, Instagram, TikTok или другого сайта.\n\n" +
-      "🎥 1080p / 🎬 720p / 🎞 480p / 🎵 MP3 — выбирайте сами.\n\n" +
-      "Команды:\n/status — статус загрузки\n/cancel — отменить\n" +
-      "/language — сменить язык\n\n⚠️ Размер файла не должен превышать 50 МБ.",
+      "╭━━━━━━━━━━━━━━━━━━╮\n" +
+      "┃  <b>🎬 YuklaSmartBot</b>  ┃\n" +
+      "╰━━━━━━━━━━━━━━━━━━╯\n\n" +
+      "Здравствуйте! Я скачиваю <b>видео</b> и <b>музыку</b> 📥\n\n" +
+      "▫️ Отправьте ссылку: <i>YouTube, Instagram, TikTok...</i>\n" +
+      "▫️ Выберите формат: <b>1080p / 720p / 480p / MP3</b>\n\n" +
+      "⚡ <b>480p</b> — самый быстрый вариант\n" +
+      "📏 Лимит файла: <b>50 МБ</b>\n\n" +
+      "Используйте кнопки ниже 👇",
     selectLang: () => "🌐 Выберите язык:",
     langSet: (n) => `✅ Язык выбран: ${n}\n\nОтправьте ссылку или нажмите /start.`,
     askLink: () => "🔗 Отправьте ссылку на видео.\nНапример: https://youtube.com/watch?v=...",
-    askFormat: () => "В каком формате скачать? 🤔\n(480p — самый маленький и быстрый)",
+    askFormat: () =>
+      "<b>🎯 Выберите формат</b>\n\n" +
+      "🎥 1080p — высокое качество\n" +
+      "🎬 720p — среднее\n" +
+      "🎞 480p — <i>самый маленький и быстрый</i>\n" +
+      "🎵 MP3 — только музыка",
     b1080: () => "🎥 Видео 1080p",
     b720: () => "🎬 Видео 720p",
     b480: () => "🎞 Видео 480p",
@@ -100,18 +122,31 @@ const T = {
     statusBusy: () => "⏳ Сейчас идёт загрузка. Отмените через /cancel.",
     statusIdle: () => "✅ Сейчас ничего не загружается. Отправьте ссылку!",
     cancelNone: () => "Нет загрузки для отмены.",
+    menuLink: () => "📥 Отправить ссылку",
+    menuLang: () => "🌐 Сменить язык",
+    menuHelp: () => "ℹ️ Как это работает?",
+    howto: () => "🔗 Отправьте мне ссылку на видео.\nНапример: <code>https://youtube.com/watch?v=...</code>",
   },
   en: {
     welcome: () =>
-      "👋 Hello!\n\nI download videos and music. 📥\n" +
-      "Send a link from YouTube, Instagram, TikTok or any other site.\n\n" +
-      "🎥 1080p / 🎬 720p / 🎞 480p / 🎵 MP3 — you choose.\n\n" +
-      "Commands:\n/status — download status\n/cancel — cancel\n" +
-      "/language — change language\n\n⚠️ File size must be under 50 MB.",
+      "╭━━━━━━━━━━━━━━━━━━╮\n" +
+      "┃  <b>🎬 YuklaSmartBot</b>  ┃\n" +
+      "╰━━━━━━━━━━━━━━━━━━╯\n\n" +
+      "Hello! I download <b>videos</b> and <b>music</b> 📥\n\n" +
+      "▫️ Send a link: <i>YouTube, Instagram, TikTok...</i>\n" +
+      "▫️ Choose format: <b>1080p / 720p / 480p / MP3</b>\n\n" +
+      "⚡ <b>480p</b> — fastest option\n" +
+      "📏 File limit: <b>50 MB</b>\n\n" +
+      "Use the buttons below 👇",
     selectLang: () => "🌐 Choose a language:",
     langSet: (n) => `✅ Language set: ${n}\n\nSend a link or press /start.`,
     askLink: () => "🔗 Please send a video link.\nExample: https://youtube.com/watch?v=...",
-    askFormat: () => "Which format? 🤔\n(480p — smallest and fastest)",
+    askFormat: () =>
+      "<b>🎯 Choose a format</b>\n\n" +
+      "🎥 1080p — high quality\n" +
+      "🎬 720p — medium\n" +
+      "🎞 480p — <i>smallest and fastest</i>\n" +
+      "🎵 MP3 — music only",
     b1080: () => "🎥 Video 1080p",
     b720: () => "🎬 Video 720p",
     b480: () => "🎞 Video 480p",
@@ -133,6 +168,10 @@ const T = {
     statusBusy: () => "⏳ A download is in progress. Use /cancel to stop it.",
     statusIdle: () => "✅ Nothing is downloading now. Send a link!",
     cancelNone: () => "Nothing to cancel.",
+    menuLink: () => "📥 Send a link",
+    menuLang: () => "🌐 Change language",
+    menuHelp: () => "ℹ️ How it works",
+    howto: () => "🔗 Send me a video link.\nExample: <code>https://youtube.com/watch?v=...</code>",
   },
 };
 
@@ -145,6 +184,16 @@ const langKeyboard = () =>
       Markup.button.callback(LANGS.uz, "lang:uz"),
       Markup.button.callback(LANGS.ru, "lang:ru"),
       Markup.button.callback(LANGS.en, "lang:en"),
+    ],
+  ]);
+
+// Asosiy menyu (chiroyli ko'rinish uchun)
+const menuKeyboard = (uid) =>
+  Markup.inlineKeyboard([
+    [Markup.button.callback(tr(uid, "menuLink"), "menu:howto")],
+    [
+      Markup.button.callback(tr(uid, "menuLang"), "menu:lang"),
+      Markup.button.callback(tr(uid, "menuHelp"), "menu:help"),
     ],
   ]);
 
@@ -208,7 +257,12 @@ function bar(percent) {
 
 // -------------------------------------------------------------- buyruqlar
 bot.start((ctx) => ctx.reply(tr(ctx.from.id, "selectLang"), langKeyboard()));
-bot.help((ctx) => ctx.reply(tr(ctx.from.id, "welcome")));
+bot.help((ctx) =>
+  ctx.reply(tr(ctx.from.id, "welcome"), {
+    parse_mode: "HTML",
+    ...menuKeyboard(ctx.from.id),
+  })
+);
 bot.command("language", (ctx) =>
   ctx.reply(tr(ctx.from.id, "selectLang"), langKeyboard())
 );
@@ -238,9 +292,9 @@ bot.on("text", async (ctx) => {
   links.set(id, match[0]);
   if (links.size > 500) links.delete(links.keys().next().value);
 
-  await ctx.reply(
-    tr(uid, "askFormat"),
-    Markup.inlineKeyboard([
+  await ctx.reply(tr(uid, "askFormat"), {
+    parse_mode: "HTML",
+    ...Markup.inlineKeyboard([
       [
         Markup.button.callback(tr(uid, "b1080"), `v1080:${id}`),
         Markup.button.callback(tr(uid, "b720"), `v720:${id}`),
@@ -249,8 +303,8 @@ bot.on("text", async (ctx) => {
         Markup.button.callback(tr(uid, "b480"), `v480:${id}`),
         Markup.button.callback(tr(uid, "bAudio"), `a:${id}`),
       ],
-    ])
-  );
+    ]),
+  });
 });
 
 // ------------------------------------------------------- tugmalar / yuklash
@@ -264,7 +318,25 @@ bot.on("callback_query", async (ctx) => {
     if (!T[id]) return ctx.answerCbQuery();
     userLangs.set(uid, id);
     await ctx.answerCbQuery();
-    return ctx.editMessageText(tr(uid, "langSet", LANGS[id]));
+    return ctx.editMessageText(tr(uid, "welcome"), {
+      parse_mode: "HTML",
+      ...menuKeyboard(uid),
+    });
+  }
+
+  // Asosiy menyu tugmalari
+  if (type === "menu") {
+    await ctx.answerCbQuery();
+    if (id === "lang")
+      return ctx.editMessageText(tr(uid, "selectLang"), langKeyboard());
+    if (id === "help")
+      return ctx.editMessageText(tr(uid, "welcome"), {
+        parse_mode: "HTML",
+        ...menuKeyboard(uid),
+      });
+    if (id === "howto")
+      return ctx.editMessageText(tr(uid, "howto"), { parse_mode: "HTML" });
+    return;
   }
 
   const url = links.get(id);
