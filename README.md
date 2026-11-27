@@ -34,10 +34,10 @@ npm start
 Birinchi ishga tushirishda `yt-dlp` avtomatik yuklab olinadi (`bin/` papkasiga).
 
 ## 🆕 Yangi funksiyalar
-- **Sifat tanlash:** 🎬 Video 720p / 🎞 Video 480p / 🎵 MP3 (480p — kichikroq fayl, tezroq yuboriladi)
-- `/status` — yuklash holatini ko'rish
-- `/cancel` — yuklashni bekor qilish
-- Parallel fragmentlar va birlashtirishsiz yuklash — tezroq ishlaydi
+- **Sifat tanlash:** 🎥 1080p / 🎬 720p / 🎞 480p / 🎵 MP3 (480p — eng kichik va tez)
+- **Ko'p tilli:** `/start` da 🇺🇿 O'zbek / 🇷🇺 Русский / 🇬🇧 English tanlash; keyin `/language` bilan o'zgartirish
+- `/status` — yuklash holati, `/cancel` — bekor qilish
+- 12 ta parallel fragment, birlashtirishsiz yuklash,Progress kamroq yangilanadi — tezroq ishlaydi
 
 ## 💬 Foydalanish
 1. Telegram'da botingizni ochib `/start` bosing

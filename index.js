@@ -1,4 +1,4 @@
-// Telegram video/musiqa yuklovchi bot
+// Telegram video/musiqa yuklovchi bot (ko'p tilli)
 import "dotenv/config";
 import { Telegraf, Markup } from "telegraf";
 import dns from "node:dns";
@@ -12,31 +12,145 @@ dns.setDefaultResultOrder("ipv4first");
 
 const TOKEN = process.env.BOT_TOKEN;
 if (!TOKEN || TOKEN.includes("AAExample")) {
-  console.error(
-    "XATO: .env faylida BOT_TOKEN ni o'rnating!\n" +
-      "1) .env.example faylidan .env nusxa oling\n" +
-      "2) @BotFather'dan olgan tokeningizni yozing"
-  );
+  console.error("XATO: .env faylida BOT_TOKEN ni o'rnating!");
   process.exit(1);
 }
 
-// Yuklash uzoq davom etishi mumkin — standart 90 soniyalik timeout yetarli emas
 const bot = new Telegraf(TOKEN, { handlerTimeout: 15 * 60 * 1000 });
 const ytdlp = await ensureYtDlp();
 
-// Havolalarni vaqtinchalik saqlash (callback data 64 baytdan oshmasligi kerak)
 const links = new Map(); // id -> url
 let linkCounter = 0;
-
-// Bir foydalanuvchi bir vaqtda faqat bitta yuklash qiladi
 const busyUsers = new Set();
-const cancellations = new Map(); // userId -> bekor qilish funksiyasi
+const cancellations = new Map();
+const userLangs = new Map(); // userId -> til kodi
 
 const URL_RE = /https?:\/\/[^\s]+/i;
 
+// ---------------------------------------------------------------- tillar
+const LANGS = {
+  uz: "🇺🇿 O'zbek",
+  ru: "🇷🇺 Русский",
+  en: "🇬🇧 English",
+};
+
+const T = {
+  uz: {
+    welcome: () =>
+      "👋 Assalomu alaykum!\n\nMen video va musiqa yuklovchi botman. 📥\n" +
+      "YouTube, Instagram, TikTok yoki boshqa sayt havolasini yuboring.\n\n" +
+      "🎥 1080p / 🎬 720p / 🎞 480p / 🎵 MP3 — siz tanlaysiz.\n\n" +
+      "Buyruqlar:\n/status — yuklash holati\n/cancel — bekor qilish\n" +
+      "/language — tilni o'zgartirish\n\n⚠️ Fayl 50 MB dan katta bo'lmasligi kerak.",
+    selectLang: () => "🌐 Tilni tanlang:",
+    langSet: (n) => `✅ Til tanlandi: ${n}\n\nHavola yuboring yoki /start bosing.`,
+    askLink: () => "🔗 Iltimos, video havolasini yuboring.\nMasalan: https://youtube.com/watch?v=...",
+    askFormat: () => "Qanday formatda yuklab beray? 🤔\n(480p — eng kichik va tez)",
+    b1080: () => "🎥 Video 1080p",
+    b720: () => "🎬 Video 720p",
+    b480: () => "🎞 Video 480p",
+    bAudio: () => "🎵 Musiqa (MP3)",
+    loading: (l) => `${l} yuklanmoqda... 0% ⏳`,
+    progress: (l, p, b) => `${l} yuklanmoqda... ${p}% ${b}`,
+    ready: (l) => `${l} tayyor! Yuborilmoqda... 📤`,
+    tooBig: () => "😔 Fayl 50 MB dan katta. Qisqaroq video yoki 480p tanlang.",
+    private: () => "🔒 Video yopiq yoki login talab qiladi. Ochiq havola yuboring.",
+    unsupported: () => "❌ Sayt qo'llab-quvvatlanmaydi. YouTube/Instagram/TikTok havolasini yuboring.",
+    blocked: () => "🚫 Sayt so'rovni rad etdi (limit yoki bot aniqlangan). Biroz kutib qayta urining.",
+    ffmpeg: () => "🎞 Faylni qayta ishlashda xatolik. Boshqa formatni sinang.",
+    sendFail: () => "📤 Faylni yuborishda aloqa uzildi. Qayta urinib ko'ring.",
+    generic: (d) => `❌ Yuklash xatoligi: ${d}`,
+    cancelled: () => "🛑 Yuklash bekor qilindi.",
+    busyCb: () => "Sizda allaqachon yuklanayotgan fayl bor!",
+    startedCb: () => "Yuklash boshlandi ⏳",
+    oldBtn: () => "Bu tugma eskirgan. Havolani qayta yuboring.",
+    statusBusy: () => "⏳ Hozir fayl yuklanayapti. /cancel bilan bekor qiling.",
+    statusIdle: () => "✅ Hozir hech narsa yuklanayotgani yo'q. Havola yuboring!",
+    cancelNone: () => "Bekor qilinadigan yuklash yo'q.",
+  },
+  ru: {
+    welcome: () =>
+      "👋 Здравствуйте!\n\nЯ бот для скачивания видео и музыки. 📥\n" +
+      "Отправьте ссылку с YouTube, Instagram, TikTok или другого сайта.\n\n" +
+      "🎥 1080p / 🎬 720p / 🎞 480p / 🎵 MP3 — выбирайте сами.\n\n" +
+      "Команды:\n/status — статус загрузки\n/cancel — отменить\n" +
+      "/language — сменить язык\n\n⚠️ Размер файла не должен превышать 50 МБ.",
+    selectLang: () => "🌐 Выберите язык:",
+    langSet: (n) => `✅ Язык выбран: ${n}\n\nОтправьте ссылку или нажмите /start.`,
+    askLink: () => "🔗 Отправьте ссылку на видео.\nНапример: https://youtube.com/watch?v=...",
+    askFormat: () => "В каком формате скачать? 🤔\n(480p — самый маленький и быстрый)",
+    b1080: () => "🎥 Видео 1080p",
+    b720: () => "🎬 Видео 720p",
+    b480: () => "🎞 Видео 480p",
+    bAudio: () => "🎵 Музыка (MP3)",
+    loading: (l) => `${l}: загрузка... 0% ⏳`,
+    progress: (l, p, b) => `${l}: загрузка... ${p}% ${b}`,
+    ready: (l) => `${l} готово! Отправляю... 📤`,
+    tooBig: () => "😔 Файл больше 50 МБ. Выберите короче видео или 480p.",
+    private: () => "🔒 Видео закрыто или требует входа. Отправьте открытую ссылку.",
+    unsupported: () => "❌ Сайт не поддерживается. Отправьте ссылку YouTube/Instagram/TikTok.",
+    blocked: () => "🚫 Сайт отклонил запрос (лимит или обнаружен бот). Попробуйте позже.",
+    ffmpeg: () => "🎞 Ошибка обработки файла. Попробуйте другой формат.",
+    sendFail: () => "📤 Ошибка отправки файла. Попробуйте ещё раз.",
+    generic: (d) => `❌ Ошибка загрузки: ${d}`,
+    cancelled: () => "🛑 Загрузка отменена.",
+    busyCb: () => "У вас уже идёт загрузка!",
+    startedCb: () => "Загрузка началась ⏳",
+    oldBtn: () => "Кнопка устарела. Отправьте ссылку заново.",
+    statusBusy: () => "⏳ Сейчас идёт загрузка. Отмените через /cancel.",
+    statusIdle: () => "✅ Сейчас ничего не загружается. Отправьте ссылку!",
+    cancelNone: () => "Нет загрузки для отмены.",
+  },
+  en: {
+    welcome: () =>
+      "👋 Hello!\n\nI download videos and music. 📥\n" +
+      "Send a link from YouTube, Instagram, TikTok or any other site.\n\n" +
+      "🎥 1080p / 🎬 720p / 🎞 480p / 🎵 MP3 — you choose.\n\n" +
+      "Commands:\n/status — download status\n/cancel — cancel\n" +
+      "/language — change language\n\n⚠️ File size must be under 50 MB.",
+    selectLang: () => "🌐 Choose a language:",
+    langSet: (n) => `✅ Language set: ${n}\n\nSend a link or press /start.`,
+    askLink: () => "🔗 Please send a video link.\nExample: https://youtube.com/watch?v=...",
+    askFormat: () => "Which format? 🤔\n(480p — smallest and fastest)",
+    b1080: () => "🎥 Video 1080p",
+    b720: () => "🎬 Video 720p",
+    b480: () => "🎞 Video 480p",
+    bAudio: () => "🎵 Music (MP3)",
+    loading: (l) => `${l} downloading... 0% ⏳`,
+    progress: (l, p, b) => `${l} downloading... ${p}% ${b}`,
+    ready: (l) => `${l} ready! Sending... 📤`,
+    tooBig: () => "😔 File is over 50 MB. Choose a shorter video or 480p.",
+    private: () => "🔒 Video is private or needs login. Send a public link.",
+    unsupported: () => "❌ Site not supported. Send a YouTube/Instagram/TikTok link.",
+    blocked: () => "🚫 Site rejected the request (rate limit or bot detected). Try later.",
+    ffmpeg: () => "🎞 Error processing the file. Try another format.",
+    sendFail: () => "📤 Failed to send the file. Please try again.",
+    generic: (d) => `❌ Download error: ${d}`,
+    cancelled: () => "🛑 Download cancelled.",
+    busyCb: () => "You already have a download in progress!",
+    startedCb: () => "Download started ⏳",
+    oldBtn: () => "This button is expired. Send the link again.",
+    statusBusy: () => "⏳ A download is in progress. Use /cancel to stop it.",
+    statusIdle: () => "✅ Nothing is downloading now. Send a link!",
+    cancelNone: () => "Nothing to cancel.",
+  },
+};
+
+const langOf = (id) => userLangs.get(id) || "uz";
+const tr = (id, key, ...args) => T[langOf(id)][key](...args);
+
+const langKeyboard = () =>
+  Markup.inlineKeyboard([
+    [
+      Markup.button.callback(LANGS.uz, "lang:uz"),
+      Markup.button.callback(LANGS.ru, "lang:ru"),
+      Markup.button.callback(LANGS.en, "lang:en"),
+    ],
+  ]);
+
+// ------------------------------------------------------------- yordamchi
 const wait = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
-// Faylni yuborish vaqtida aloqa uzilsa, bir necha marta qayta urinadi
 async function sendWithRetry(sendFn) {
   for (let attempt = 1; attempt <= 5; attempt++) {
     try {
@@ -49,8 +163,7 @@ async function sendWithRetry(sendFn) {
   }
 }
 
-// Faylni Telegram'ga yuborish: Telegraf/form-data o'rniga Node'ning ichki fetch'i
-// (bu muhitda Telegraf stream yuborish "socket hang up" beradi)
+// Faylni Telegram'ga yuborish (Node ichki fetch — tez va ishonchli)
 async function uploadFile(chatId, file, mode) {
   const bytes = fs.readFileSync(file);
   const filename = path.basename(file);
@@ -78,7 +191,6 @@ async function uploadFile(chatId, file, mode) {
   return data;
 }
 
-// Status/xato xabarini yetkazish: tahrirlab bo'lmasa, yangi xabar yuboradi
 async function notify(ctx, status, text) {
   try {
     await sendWithRetry(() =>
@@ -89,89 +201,98 @@ async function notify(ctx, status, text) {
   }
 }
 
-const WELCOME =
-  "👋 Assalomu alaykum!\n\n" +
-  "Men video va musiqa yuklovchi botman. 📥\n\n" +
-  "Menga YouTube, Instagram, TikTok yoki boshqa sayt havolasini yuboring — " +
-  "men uni video (MP4) yoki musiqa (MP3) ko'rinishida yuklab beraman.\n\n" +
-  "🎬 Video 720p / 🎞 Video 480p / 🎵 MP3 — siz tanlaysiz.\n\n" +
-  "Buyruqlar:\n" +
-  "/status — yuklash holati\n" +
-  "/cancel — yuklashni bekor qilish\n\n" +
-  "⚠️ Telegram cheklovi: fayl hajmi 50 MB dan oshmasligi kerak.";
+function bar(percent) {
+  const filled = Math.round(percent / 10);
+  return "▓".repeat(filled) + "░".repeat(10 - filled);
+}
 
-bot.start((ctx) => ctx.reply(WELCOME));
-bot.help((ctx) => ctx.reply(WELCOME));
+// -------------------------------------------------------------- buyruqlar
+bot.start((ctx) => ctx.reply(tr(ctx.from.id, "selectLang"), langKeyboard()));
+bot.help((ctx) => ctx.reply(tr(ctx.from.id, "welcome")));
+bot.command("language", (ctx) =>
+  ctx.reply(tr(ctx.from.id, "selectLang"), langKeyboard())
+);
 bot.command("status", (ctx) =>
   ctx.reply(
     busyUsers.has(ctx.from.id)
-      ? "⏳ Hozir siz uchun fayl yuklanayapti. /cancel bilan bekor qilishingiz mumkin."
-      : "✅ Hozir hech narsa yuklanayotgani yo'q. Havola yuboring!"
+      ? tr(ctx.from.id, "statusBusy")
+      : tr(ctx.from.id, "statusIdle")
   )
 );
 bot.command("cancel", (ctx) => {
   const cancel = cancellations.get(ctx.from.id);
   if (cancel) {
     cancel();
-    return ctx.reply("🛑 Yuklash bekor qilindi.");
+    return ctx.reply(tr(ctx.from.id, "cancelled"));
   }
-  return ctx.reply("Bekor qilinadigan yuklash yo'q.");
+  return ctx.reply(tr(ctx.from.id, "cancelNone"));
 });
 
-// Havola yuborilganda — format tanlash tugmalari
+// ---------------------------------------------------------- havola xabari
 bot.on("text", async (ctx) => {
+  const uid = ctx.from.id;
   const match = ctx.message.text.match(URL_RE);
-  if (!match) {
-    return ctx.reply("Iltimos, video havolasini (link) yuboring. 🔗\n\nMasalan: https://youtube.com/watch?v=...");
-  }
-  const url = match[0];
+  if (!match) return ctx.reply(tr(uid, "askLink"));
+
   const id = String(++linkCounter);
-  links.set(id, url);
-  // Xotira to'lib qolmasligi uchun eski havolalarni tozalash
+  links.set(id, match[0]);
   if (links.size > 500) links.delete(links.keys().next().value);
 
   await ctx.reply(
-    "Qanday formatda yuklab beray? 🤔\n(480p — kichikroq fayl, tezroq yuboriladi)",
+    tr(uid, "askFormat"),
     Markup.inlineKeyboard([
       [
-        Markup.button.callback("🎬 Video 720p", `v720:${id}`),
-        Markup.button.callback("🎞 Video 480p", `v480:${id}`),
+        Markup.button.callback(tr(uid, "b1080"), `v1080:${id}`),
+        Markup.button.callback(tr(uid, "b720"), `v720:${id}`),
       ],
-      [Markup.button.callback("🎵 Musiqa (MP3)", `a:${id}`)],
+      [
+        Markup.button.callback(tr(uid, "b480"), `v480:${id}`),
+        Markup.button.callback(tr(uid, "bAudio"), `a:${id}`),
+      ],
     ])
   );
 });
 
-// Format tanlanganda — yuklab olish
+// ------------------------------------------------------- tugmalar / yuklash
 bot.on("callback_query", async (ctx) => {
   const data = ctx.callbackQuery.data || "";
   const [type, id] = data.split(":");
-  const url = links.get(id);
-  if (!url || !["v720", "v480", "a"].includes(type)) {
-    return ctx.answerCbQuery("Bu tugma eskirgan. Havolani qayta yuboring.");
+  const uid = ctx.from.id;
+
+  // Til tanlash
+  if (type === "lang") {
+    if (!T[id]) return ctx.answerCbQuery();
+    userLangs.set(uid, id);
+    await ctx.answerCbQuery();
+    return ctx.editMessageText(tr(uid, "langSet", LANGS[id]));
   }
 
-  const userId = ctx.from.id;
-  if (busyUsers.has(userId)) {
-    return ctx.answerCbQuery("Sizda allaqachon yuklanayotgan fayl bor!");
+  const url = links.get(id);
+  if (!url || !["v1080", "v720", "v480", "a"].includes(type)) {
+    return ctx.answerCbQuery(tr(uid, "oldBtn"));
   }
-  await ctx.answerCbQuery("Yuklash boshlandi ⏳");
-  busyUsers.add(userId);
+  if (busyUsers.has(uid)) return ctx.answerCbQuery(tr(uid, "busyCb"));
+  await ctx.answerCbQuery(tr(uid, "startedCb"));
+  busyUsers.add(uid);
 
   const mode = type === "a" ? "audio" : "video";
-  const quality = type === "v480" ? "480" : "720";
-  const label = mode === "audio" ? "🎵 Musiqa" : `🎬 Video ${quality}p`;
-  const status = await ctx.reply(`${label} yuklanmoqda... 0% ⏳`);
+  const quality = type.startsWith("v") ? type.slice(1) : "720";
+  const label = mode === "audio" ? tr(uid, "bAudio") : tr(uid, `b${quality}`);
+  const status = await ctx.reply(tr(uid, "loading", label));
 
-  // Progress xabarini yangilash (Telegram limitiga tushmaslik uchun sekinroq)
+  // Progress xabarini kamroq yangilaymiz — bu ham tezlikka yordam beradi
   let lastEdit = 0;
   const onProgress = (percent) => {
     const now = Date.now();
-    if (now - lastEdit < 3000) return;
+    if (now - lastEdit < 5000) return;
     lastEdit = now;
     ctx.telegram
-      .editMessageText(ctx.chat.id, status.message_id, undefined,
-        `${label} yuklanmoqda... ${percent}% ${bar(percent)}`)
+      .editMessageText(
+        ctx.chat.id,
+        status.message_id,
+        undefined,
+        tr(uid, "progress", label, percent, bar(percent))
+      )
       .catch(() => {});
   };
 
@@ -179,51 +300,35 @@ bot.on("callback_query", async (ctx) => {
   try {
     result = await download(ytdlp, url, mode, onProgress, {
       quality,
-      onStart: (cancel) => cancellations.set(userId, cancel),
+      onStart: (cancel) => cancellations.set(uid, cancel),
     });
-    await notify(ctx, status, `${label} tayyor! Telegramga yuborilmoqda... 📤`);
-
+    await notify(ctx, status, tr(uid, "ready", label));
     await sendWithRetry(() => uploadFile(ctx.chat.id, result.file, mode));
     await ctx.telegram.deleteMessage(ctx.chat.id, status.message_id).catch(() => {});
   } catch (err) {
     console.error("Yuklash xatosi:", err.message);
+    const m = err.message;
     let msg;
-    if (err.message === "CANCELLED") {
-      msg = "🛑 Yuklash bekor qilindi.";
-    } else if (err.message === "TOO_BIG") {
-      msg = "😔 Fayl 50 MB dan katta — Telegram orqali yubora olmayman. Qisqaroq video tanlang.";
-    } else if (/private|login|sign in|cookies/i.test(err.message)) {
-      msg = "🔒 Bu video yopiq yoki login talab qiladi. Ochiq video havolasini yuboring.";
-    } else if (/unsupported url/i.test(err.message)) {
-      msg = "❌ Bu sayt qo'llab-quvvatlanmaydi. YouTube, Instagram yoki TikTok havolasini yuboring.";
-    } else if (/403|429|too many requests|rate limit|forbidden/i.test(err.message)) {
-      msg = "🚫 Sayt so'rovni rad etdi (masalan, bot aniqlangan yoki limit tugagan). Biroz kutib, boshqa havola bilan qayta urining.";
-    } else if (/ffmpeg|postprocess/i.test(err.message)) {
-      msg = "🎞 Faylni qayta ishlashda xatolik. Boshqa formatni (MP3 yoki 480p) sinab ko'ring.";
-    } else if (/socket hang up|ECONNRESET|ETIMEDOUT|fetch failed|sendAudio|sendVideo/i.test(err.message)) {
-      msg = "📤 Faylni yuborishda aloqa uzildi. Internetni tekshirib, qayta urinib ko'ring.";
-    } else {
-      // Aniq sababni ham ko'rsatamiz — keyingi safar tez tuzatish uchun
-      const detail = String(err.message).replace(/\s+/g, " ").slice(0, 200);
-      msg = `❌ Yuklab olishda xatolik: ${detail}`;
-    }
+    if (m === "CANCELLED") msg = tr(uid, "cancelled");
+    else if (m === "TOO_BIG") msg = tr(uid, "tooBig");
+    else if (/private|login|sign in|cookies/i.test(m)) msg = tr(uid, "private");
+    else if (/unsupported url/i.test(m)) msg = tr(uid, "unsupported");
+    else if (/403|429|too many requests|rate limit|forbidden/i.test(m)) msg = tr(uid, "blocked");
+    else if (/ffmpeg|postprocess/i.test(m)) msg = tr(uid, "ffmpeg");
+    else if (/socket hang up|ECONNRESET|ETIMEDOUT|fetch failed|sendAudio|sendVideo/i.test(m))
+      msg = tr(uid, "sendFail");
+    else msg = tr(uid, "generic", String(m).replace(/\s+/g, " ").slice(0, 200));
     await notify(ctx, status, msg);
   } finally {
     if (result) cleanup(result.dir);
-    busyUsers.delete(userId);
-    cancellations.delete(userId);
+    busyUsers.delete(uid);
+    cancellations.delete(uid);
   }
 });
 
-function bar(percent) {
-  const filled = Math.round(percent / 10);
-  return "▓".repeat(filled) + "░".repeat(10 - filled);
-}
-
 bot.catch((err) => console.error("Bot xatosi:", err));
 
-// Bulut platformalari (Render/Koyeb) port ochishni talab qiladi.
-// Webhook rejimi: Telegram xabari kelganda servis uyg'onadi va xabarni qayta ishlaydi.
+// -------------------------------------------------- server / webhook sozlamasi
 const PORT = process.env.PORT || 3100;
 http
   .createServer(async (req, res) => {
@@ -244,11 +349,10 @@ http
   })
   .listen(PORT, () => console.log(`Health server: port ${PORT}`));
 
-// Polling xatoliganda (masalan, boshqa bot instance bilan 409 Conflict) avtomatik qayta urinadi
 async function startPolling() {
   try {
     await bot.launch({ dropPendingUpdates: true }, () =>
-      console.log("✅ Bot ishga tushdi (polling)! Telegram'da /start bosing.")
+      console.log("✅ Bot ishga tushdi (polling)!")
     );
   } catch (err) {
     console.error("Bot polling xatosi:", err.message, "- 10 soniyada qayta urinaman");
@@ -256,7 +360,6 @@ async function startPolling() {
   }
 }
 
-// Render bulutida RENDER_EXTERNAL_URL avtomatik beriladi — webhook ishlatamiz
 const WEBHOOK_URL = process.env.RENDER_EXTERNAL_URL
   ? `${process.env.RENDER_EXTERNAL_URL}/telegram`
   : process.env.WEBHOOK_URL;

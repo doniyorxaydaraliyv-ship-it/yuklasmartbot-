@@ -81,7 +81,7 @@ export function download(ytdlp, url, mode, onProgress = () => {}, options = {}) 
       "--socket-timeout", "30",
       "--retries", "2",
       // Segmentlarni parallel yuklab olish — DASH/HLS uchun tezlikni oshiradi
-      "--concurrent-fragments", "8",
+      "--concurrent-fragments", "12",
       // Bulutda YouTube challenge'larini hal qilish uchun JS muhiti
       "--js-runtimes", "node",
       "--remote-components", "ejs:github",
@@ -97,7 +97,9 @@ export function download(ytdlp, url, mode, onProgress = () => {}, options = {}) 
       );
     } else {
       // Bitta fayl (video+audio birga) — ffmpeg bilan birlashtirish bosqichi yo'q
-      const h = options.quality === "480" ? "480" : "720";
+      const h = ["480", "720", "1080"].includes(options.quality)
+        ? options.quality
+        : "720";
       args.push(
         "-f",
         `best[ext=mp4][height<=${h}]/best[height<=${h}]/best[ext=mp4]/best`
