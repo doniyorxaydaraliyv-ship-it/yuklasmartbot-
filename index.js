@@ -507,16 +507,17 @@ bot.on("callback_query", async (ctx) => {
   } catch (err) {
     console.error("Yuklash xatosi:", err.message);
     const m = err.message;
+    const detail = String(m).replace(/\s+/g, " ").slice(0, 160);
     let msg;
     if (m === "CANCELLED") msg = tr(uid, "cancelled");
     else if (m === "TOO_BIG") msg = tr(uid, "tooBig");
-    else if (/private|login|sign in|cookies/i.test(m)) msg = tr(uid, "private");
-    else if (/unsupported url/i.test(m)) msg = tr(uid, "unsupported");
-    else if (/403|429|too many requests|rate limit|forbidden/i.test(m)) msg = tr(uid, "blocked");
-    else if (/ffmpeg|postprocess/i.test(m)) msg = tr(uid, "ffmpeg");
+    else if (/private|login|sign in|cookies/i.test(m)) msg = `${tr(uid, "private")}\n(${detail})`;
+    else if (/unsupported url/i.test(m)) msg = `${tr(uid, "unsupported")}\n(${detail})`;
+    else if (/403|429|too many requests|rate limit|forbidden/i.test(m)) msg = `${tr(uid, "blocked")}\n(${detail})`;
+    else if (/ffmpeg|postprocess/i.test(m)) msg = `${tr(uid, "ffmpeg")}\n(${detail})`;
     else if (/socket hang up|ECONNRESET|ETIMEDOUT|fetch failed|sendAudio|sendVideo/i.test(m))
-      msg = tr(uid, "sendFail");
-    else msg = tr(uid, "generic", String(m).replace(/\s+/g, " ").slice(0, 200));
+      msg = `${tr(uid, "sendFail")}\n(${detail})`;
+    else msg = tr(uid, "generic", detail);
     await notify(ctx, status, msg);
   } finally {
     if (result) cleanup(result.dir);

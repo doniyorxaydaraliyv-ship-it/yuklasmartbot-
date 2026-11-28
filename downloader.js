@@ -87,6 +87,8 @@ export function download(ytdlp, url, mode, onProgress = () => {}, options = {}) 
       // Bulutda YouTube challenge'larini hal qilish uchun JS muhiti
       "--js-runtimes", "node",
       "--remote-components", "ejs:github",
+      // Bulut IP'larida YouTube "bot" deb aniqlashini kamaytirish
+      "--extractor-args", "youtube:player_client=android",
     ];
 
     if (mode === "audio") {
