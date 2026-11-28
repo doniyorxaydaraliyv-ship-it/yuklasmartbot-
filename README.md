@@ -35,6 +35,7 @@ Birinchi ishga tushirishda `yt-dlp` avtomatik yuklab olinadi (`bin/` papkasiga).
 
 ## 🆕 Yangi funksiyalar
 - **Sifat tanlash:** 🎥 1080p / 🎬 720p / 🎞 480p / 🎵 MP3 (480p — eng kichik va tez)
+- **AI/qidiruv:** matn yozing (masalan `tinch piano musiqa`) yoki `/search tinch musiqa` → YouTube'dan 5 ta video topilib tugmalar bilan chiqadi. `GEMINI_API_KEY` qo'yilsa, AI so'rovni yaxshilaydi; kalitsiz ham qidiruv ishlaydi
 - **Ko'p tilli:** `/start` da 🇺🇿 O'zbek / 🇷🇺 Русский / 🇬🇧 English tanlash; keyin `/language` bilan o'zgartirish
 - `/status` — yuklash holati, `/cancel` — bekor qilish
 - 12 ta parallel fragment, birlashtirishsiz yuklash,Progress kamroq yangilanadi — tezroq ishlaydi

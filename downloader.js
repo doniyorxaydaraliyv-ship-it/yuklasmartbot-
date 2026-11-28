@@ -171,6 +171,30 @@ export function download(ytdlp, url, mode, onProgress = () => {}, options = {}) 
   });
 }
 
+/**
+ * YouTube'dan qidiruv natijalarini oladi (API kaliti kerak emas).
+ * @returns {Promise<Array<{id:string,title:string,url:string}>>}
+ */
+export async function searchVideos(ytdlp, query, limit = 5) {
+  const raw = await ytdlp.execPromise([
+    "--flat-playlist",
+    "--dump-json",
+    `ytsearch${limit}:${query}`,
+  ]);
+  return String(raw)
+    .split("\n")
+    .filter(Boolean)
+    .map((line) => {
+      try {
+        const j = JSON.parse(line);
+        return { id: j.id, title: j.title, url: j.url };
+      } catch {
+        return null;
+      }
+    })
+    .filter(Boolean);
+}
+
 /** Vaqtinchalik papkani o'chiradi */
 export function cleanup(dir) {
   try {

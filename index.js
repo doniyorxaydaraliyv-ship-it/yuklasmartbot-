@@ -5,7 +5,7 @@ import dns from "node:dns";
 import fs from "node:fs";
 import http from "node:http";
 import path from "node:path";
-import { ensureYtDlp, download, cleanup } from "./downloader.js";
+import { ensureYtDlp, download, cleanup, searchVideos } from "./downloader.js";
 
 // Ba'zi tarmoqlarda IPv6 ishlamaydi — avval IPv4'ga ulanamiz
 dns.setDefaultResultOrder("ipv4first");
@@ -21,6 +21,8 @@ const ytdlp = await ensureYtDlp();
 
 const links = new Map(); // id -> url
 let linkCounter = 0;
+const searches = new Map(); // qidiruv id -> natijalar
+let searchCounter = 0;
 const busyUsers = new Set();
 const cancellations = new Map();
 const userLangs = new Map(); // userId -> til kodi
@@ -44,7 +46,8 @@ const T = {
       "▫️ Havola yuboring: <i>YouTube, Instagram, TikTok...</i>\n" +
       "▫️ Formatni tanlang: <b>1080p / 720p / 480p / MP3</b>\n\n" +
       "⚡ <b>480p</b> — eng tez variant\n" +
-      "📏 Fayl limiti: <b>50 MB</b>\n\n" +
+      "📏 Fayl limiti: <b>50 MB</b>\n" +
+      "🔍 <i>\"Tinch musiqa top\"</i> deb yozsangiz, video qidirib beraman\n\n" +
       "Pastdagi tugmalardan foydalaning 👇",
     selectLang: () => "🌐 Tilni tanlang:",
     langSet: (n) => `✅ Til tanlandi: ${n}\n\nHavola yuboring yoki /start bosing.`,
@@ -80,6 +83,9 @@ const T = {
     menuLang: () => "🌐 Tilni o'zgartirish",
     menuHelp: () => "ℹ️ Qanday ishlaydi?",
     howto: () => "🔗 Menga video havolasini yuboring.\nMasalan: <code>https://youtube.com/watch?v=...</code>",
+    searching: () => "🔍 Qidirilmoqda...",
+    searchEmpty: () => "😔 Hech narsa topilmadi. Boshqa so'rov yozing.",
+    searchResults: (q, n) => `🔎 <b>${q}</b> uchun ${n} ta natija topildi.\n\nVideoni tanlang 👇`,
   },
   ru: {
     welcome: () =>
@@ -90,7 +96,8 @@ const T = {
       "▫️ Отправьте ссылку: <i>YouTube, Instagram, TikTok...</i>\n" +
       "▫️ Выберите формат: <b>1080p / 720p / 480p / MP3</b>\n\n" +
       "⚡ <b>480p</b> — самый быстрый вариант\n" +
-      "📏 Лимит файла: <b>50 МБ</b>\n\n" +
+      "📏 Лимит файла: <b>50 МБ</b>\n" +
+      "🔍 Напишите <i>\"спокойная музыка\"</i> — найду видео\n\n" +
       "Используйте кнопки ниже 👇",
     selectLang: () => "🌐 Выберите язык:",
     langSet: (n) => `✅ Язык выбран: ${n}\n\nОтправьте ссылку или нажмите /start.`,
@@ -126,6 +133,9 @@ const T = {
     menuLang: () => "🌐 Сменить язык",
     menuHelp: () => "ℹ️ Как это работает?",
     howto: () => "🔗 Отправьте мне ссылку на видео.\nНапример: <code>https://youtube.com/watch?v=...</code>",
+    searching: () => "🔍 Ищу...",
+    searchEmpty: () => "😔 Ничего не найдено. Попробуйте другой запрос.",
+    searchResults: (q, n) => `🔎 Найдено ${n} результатов по запросу <b>${q}</b>.\n\nВыберите видео 👇`,
   },
   en: {
     welcome: () =>
@@ -136,7 +146,8 @@ const T = {
       "▫️ Send a link: <i>YouTube, Instagram, TikTok...</i>\n" +
       "▫️ Choose format: <b>1080p / 720p / 480p / MP3</b>\n\n" +
       "⚡ <b>480p</b> — fastest option\n" +
-      "📏 File limit: <b>50 MB</b>\n\n" +
+      "📏 File limit: <b>50 MB</b>\n" +
+      "🔍 Type <i>\"calm music\"</i> — I'll find videos for you\n\n" +
       "Use the buttons below 👇",
     selectLang: () => "🌐 Choose a language:",
     langSet: (n) => `✅ Language set: ${n}\n\nSend a link or press /start.`,
@@ -172,6 +183,9 @@ const T = {
     menuLang: () => "🌐 Change language",
     menuHelp: () => "ℹ️ How it works",
     howto: () => "🔗 Send me a video link.\nExample: <code>https://youtube.com/watch?v=...</code>",
+    searching: () => "🔍 Searching...",
+    searchEmpty: () => "😔 Nothing found. Try another request.",
+    searchResults: (q, n) => `🔎 Found ${n} results for <b>${q}</b>.\n\nChoose a video 👇`,
   },
 };
 
@@ -260,6 +274,96 @@ function bar(percent) {
   return "▓".repeat(filled) + "░".repeat(10 - filled);
 }
 
+const esc = (s) =>
+  String(s).replace(/[<>&]/g, (c) => ({ "<": "&lt;", ">": "&gt;", "&": "&amp;" })[c]);
+
+// Format tugmalari (havola va qidiruv natijasi uchun umumiy)
+const formatKeyboard = (uid, id) =>
+  Markup.inlineKeyboard([
+    [
+      Markup.button.callback(tr(uid, "b1080"), `v1080:${id}`),
+      Markup.button.callback(tr(uid, "b720"), `v720:${id}`),
+    ],
+    [
+      Markup.button.callback(tr(uid, "b480"), `v480:${id}`),
+      Markup.button.callback(tr(uid, "bAudio"), `a:${id}`),
+    ],
+  ]);
+
+// AI kaliti bor bo'lsa — tabiiy tilni qidiruv so'zlariga aylantiradi
+async function aiQuery(text) {
+  const key = process.env.GEMINI_API_KEY;
+  if (!key) return text;
+  try {
+    const res = await fetch(
+      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${key}`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          contents: [
+            {
+              parts: [
+                {
+                  text:
+                    "Convert this request into 3-5 short YouTube search keywords. " +
+                    "Reply with ONLY the keywords, no explanation: " +
+                    text,
+                },
+              ],
+            },
+          ],
+        }),
+        signal: AbortSignal.timeout(20000),
+      }
+    );
+    const data = await res.json();
+    const out = data?.candidates?.[0]?.content?.parts?.[0]?.text?.trim();
+    return out && out.length < 200 ? out.replace(/\s+/g, " ") : text;
+  } catch (err) {
+    console.error("AI qidiruv xatosi:", err.message);
+    return text;
+  }
+}
+
+// Matn bo'yicha video qidirish
+async function runSearch(ctx, text) {
+  const uid = ctx.from.id;
+  const status = await ctx.reply(tr(uid, "searching"));
+  const query = await aiQuery(text);
+  let results = [];
+  try {
+    results = await searchVideos(ytdlp, query, 5);
+  } catch (err) {
+    console.error("Qidiruv xatosi:", err.message);
+  }
+
+  if (!results.length) {
+    const msg = tr(uid, "searchEmpty");
+    return ctx.telegram
+      .editMessageText(ctx.chat.id, status.message_id, undefined, msg)
+      .catch(() => ctx.reply(msg));
+  }
+
+  const key = String(++searchCounter);
+  searches.set(key, results);
+  const buttons = results.map((r, i) => [
+    Markup.button.callback(`▶️ ${r.title.slice(0, 42)}`, `s:${key}.${i}`),
+  ]);
+  await ctx.telegram
+    .editMessageText(
+      ctx.chat.id,
+      status.message_id,
+      undefined,
+      tr(uid, "searchResults", esc(query), results.length),
+      { parse_mode: "HTML", ...Markup.inlineKeyboard(buttons) }
+    )
+    .catch(() => ctx.reply(tr(uid, "searchResults", esc(query), results.length), {
+      parse_mode: "HTML",
+      ...Markup.inlineKeyboard(buttons),
+    }));
+}
+
 // -------------------------------------------------------------- buyruqlar
 bot.start((ctx) => ctx.reply(tr(ctx.from.id, "selectLang"), langKeyboard()));
 bot.help((ctx) =>
@@ -286,12 +390,22 @@ bot.command("cancel", (ctx) => {
   }
   return ctx.reply(tr(ctx.from.id, "cancelNone"));
 });
+bot.command("search", (ctx) => {
+  const q = ctx.message.text.replace(/^\/search(?:@\w+)?\s*/, "").trim();
+  return q ? runSearch(ctx, q) : ctx.reply(tr(ctx.from.id, "searching"));
+});
 
 // ---------------------------------------------------------- havola xabari
 bot.on("text", async (ctx) => {
   const uid = ctx.from.id;
-  const match = ctx.message.text.match(URL_RE);
-  if (!match) return ctx.reply(tr(uid, "askLink"));
+  const text = ctx.message.text.trim();
+  const match = text.match(URL_RE);
+
+  // Havola emas — AI/qidiruv so'rovi sifatida qabul qilamiz
+  if (!match) {
+    if (text.length < 3) return ctx.reply(tr(uid, "askLink"));
+    return runSearch(ctx, text);
+  }
 
   const id = String(++linkCounter);
   links.set(id, match[0]);
@@ -299,16 +413,7 @@ bot.on("text", async (ctx) => {
 
   await ctx.reply(tr(uid, "askFormat"), {
     parse_mode: "HTML",
-    ...Markup.inlineKeyboard([
-      [
-        Markup.button.callback(tr(uid, "b1080"), `v1080:${id}`),
-        Markup.button.callback(tr(uid, "b720"), `v720:${id}`),
-      ],
-      [
-        Markup.button.callback(tr(uid, "b480"), `v480:${id}`),
-        Markup.button.callback(tr(uid, "bAudio"), `a:${id}`),
-      ],
-    ]),
+    ...formatKeyboard(uid, id),
   });
 });
 
@@ -342,6 +447,20 @@ bot.on("callback_query", async (ctx) => {
     if (id === "howto")
       return ctx.editMessageText(tr(uid, "howto"), { parse_mode: "HTML" });
     return;
+  }
+
+  // Qidiruv natijasini tanlash
+  if (type === "s") {
+    const [key, idx] = id.split(".");
+    const item = searches.get(key)?.[Number(idx)];
+    if (!item) return ctx.answerCbQuery(tr(uid, "oldBtn"));
+    await ctx.answerCbQuery();
+    const linkId = String(++linkCounter);
+    links.set(linkId, item.url);
+    return ctx.reply(tr(uid, "askFormat"), {
+      parse_mode: "HTML",
+      ...formatKeyboard(uid, linkId),
+    });
   }
 
   const url = links.get(id);
