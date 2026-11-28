@@ -444,14 +444,32 @@ const WEBHOOK_URL = process.env.RENDER_EXTERNAL_URL
   ? `${process.env.RENDER_EXTERNAL_URL}/telegram`
   : process.env.WEBHOOK_URL;
 
-if (WEBHOOK_URL) {
+// Webhook o'chirilganda QAYTA URINADI, lekin pollingga o'tmaydi
+// (Telegraf polling ishga tushirsa, webhook'ni o'zi o'chirib qoyadi)
+async function installWebhook() {
   try {
-    await bot.telegram.setWebhook(WEBHOOK_URL, { drop_pending_updates: true });
+    await bot.telegram.setWebhook(WEBHOOK_URL);
     console.log("✅ Webhook o'rnatildi:", WEBHOOK_URL);
   } catch (err) {
-    console.error("Webhook xatosi, pollingga o'tiladi:", err.message);
-    startPolling();
+    console.error("Webhook o'rnatish xatosi:", err.message, "- 30 s keyin qayta urinaman");
+    setTimeout(installWebhook, 30000);
   }
+}
+
+if (WEBHOOK_URL) {
+  installWebhook();
+  // Har 5 daqiqada tekshiradi: o'chirib qolsa, o'zi qayta o'rnatadi
+  setInterval(async () => {
+    try {
+      const info = await bot.telegram.getWebhookInfo();
+      if (info.url !== WEBHOOK_URL) {
+        console.log("⚠️ Webhook yo'qolgan — qayta o'rnatyapman");
+        await installWebhook();
+      }
+    } catch (err) {
+      console.error("Webhook tekshirish xatosi:", err.message);
+    }
+  }, 5 * 60 * 1000);
 } else {
   startPolling();
 }
