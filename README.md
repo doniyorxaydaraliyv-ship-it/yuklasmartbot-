@@ -46,6 +46,22 @@ Birinchi ishga tushirishda `yt-dlp` avtomatik yuklab olinadi (`bin/` papkasiga).
 3. **🎬 Video (MP4)** yoki **🎵 Musiqa (MP3)** tugmasini bosing
 4. Bot yuklab, faylni sizga yuboradi — progress foizi ko'rsatiladi
 
+## 🍪 YouTube bot aniqlaganda (cookies)
+
+Agar bot `Sign in to confirm you're not a bot` xatosini bersa, Render serveriga **cookies fayli** qo'shish kerak:
+
+1. Brauzerda YouTubega kiring (o'z akkauntingiz bilan)
+2. Chrome/Edge uchun **"Get cookies.txt LOCALLY"** kengaytmasini o'rnating
+3. youtube.com sahifasida kengaytma bilan `cookies.txt` ni eksport qiling
+4. Render → **Environment → Secret Files** → **Add Secret File**:
+   - File name: `cookies.txt`
+   - Contents: eksport qilingan fayl ichidagi matn
+   - Mount path: `/etc/secrets/cookies.txt`
+5. **Environment Variables** ga qo'shing: `COOKIES_FILE` = `/etc/secrets/cookies.txt`
+6. **Manual Deploy** qiling
+
+Kod cookies faylini avtomatik topib, yt-dlp'ga beradi. Mahalliy ishga tushirish uchun faylni loyiha ildiziga `cookies.txt` nomi bilan qo'ysangiz bo'ladi (GitHub'ga yuborilmaydi).
+
 ## ⚠️ Cheklovlar
 - Telegram Bot API orqali maksimal **50 MB** fayl yuborish mumkin
 - Yopiq (private) videolar yuklanmaydi

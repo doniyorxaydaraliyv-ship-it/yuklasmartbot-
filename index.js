@@ -67,6 +67,8 @@ const T = {
     ready: (l) => `${l} tayyor! Yuborilmoqda... 📤`,
     tooBig: () => "😔 Fayl 50 MB dan katta. Qisqaroq video yoki 480p tanlang.",
     private: () => "🔒 Video yopiq yoki login talab qiladi. Ochiq havola yuboring.",
+    botCheck: () =>
+      "🤖 YouTube botni aniqladi. Serverga cookies fayli qo'shish kerak — menga yozing, yo'riq beraman.",
     unsupported: () => "❌ Sayt qo'llab-quvvatlanmaydi. YouTube/Instagram/TikTok havolasini yuboring.",
     blocked: () => "🚫 Sayt so'rovni rad etdi (limit yoki bot aniqlangan). Biroz kutib qayta urining.",
     ffmpeg: () => "🎞 Faylni qayta ishlashda xatolik. Boshqa formatni sinang.",
@@ -117,6 +119,7 @@ const T = {
     ready: (l) => `${l} готово! Отправляю... 📤`,
     tooBig: () => "😔 Файл больше 50 МБ. Выберите короче видео или 480p.",
     private: () => "🔒 Видео закрыто или требует входа. Отправьте открытую ссылку.",
+    botCheck: () => "🤖 YouTube определил бота. Нужен cookies-файл на сервере — напишите мне инструкцию.",
     unsupported: () => "❌ Сайт не поддерживается. Отправьте ссылку YouTube/Instagram/TikTok.",
     blocked: () => "🚫 Сайт отклонил запрос (лимит или обнаружен бот). Попробуйте позже.",
     ffmpeg: () => "🎞 Ошибка обработки файла. Попробуйте другой формат.",
@@ -167,6 +170,7 @@ const T = {
     ready: (l) => `${l} ready! Sending... 📤`,
     tooBig: () => "😔 File is over 50 MB. Choose a shorter video or 480p.",
     private: () => "🔒 Video is private or needs login. Send a public link.",
+    botCheck: () => "🤖 YouTube detected a bot. A cookies file is needed on the server — ask me for instructions.",
     unsupported: () => "❌ Site not supported. Send a YouTube/Instagram/TikTok link.",
     blocked: () => "🚫 Site rejected the request (rate limit or bot detected). Try later.",
     ffmpeg: () => "🎞 Error processing the file. Try another format.",
@@ -511,6 +515,8 @@ bot.on("callback_query", async (ctx) => {
     let msg;
     if (m === "CANCELLED") msg = tr(uid, "cancelled");
     else if (m === "TOO_BIG") msg = tr(uid, "tooBig");
+    else if (/confirm you.re not a bot|sign in to confirm|cookies-from-browser/i.test(m))
+      msg = tr(uid, "botCheck");
     else if (/private|login|sign in|cookies/i.test(m)) msg = `${tr(uid, "private")}\n(${detail})`;
     else if (/unsupported url/i.test(m)) msg = `${tr(uid, "unsupported")}\n(${detail})`;
     else if (/403|429|too many requests|rate limit|forbidden/i.test(m)) msg = `${tr(uid, "blocked")}\n(${detail})`;

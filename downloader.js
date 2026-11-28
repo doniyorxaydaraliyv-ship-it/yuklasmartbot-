@@ -91,6 +91,10 @@ export function download(ytdlp, url, mode, onProgress = () => {}, options = {}) 
       "--extractor-args", "youtube:player_client=android",
     ];
 
+    // YouTube bot tekshiruvidan o'tish uchun cookies fayli (ixtiyoriy)
+    const cookieFile = process.env.COOKIES_FILE || path.join(ROOT, "cookies.txt");
+    if (fs.existsSync(cookieFile)) args.push("--cookies", cookieFile);
+
     if (mode === "audio") {
       // ffmpeg umuman ishlatilmaydi — tayyor audio faylni olib, to'g'ridan yuboramiz
       // (bu MP3 ga qayta kodlashdan ancha tezroq)
@@ -178,11 +182,10 @@ export function download(ytdlp, url, mode, onProgress = () => {}, options = {}) 
  * @returns {Promise<Array<{id:string,title:string,url:string}>>}
  */
 export async function searchVideos(ytdlp, query, limit = 5) {
-  const raw = await ytdlp.execPromise([
-    "--flat-playlist",
-    "--dump-json",
-    `ytsearch${limit}:${query}`,
-  ]);
+  const args = ["--flat-playlist", "--dump-json", `ytsearch${limit}:${query}`];
+  const cookieFile = process.env.COOKIES_FILE || path.join(ROOT, "cookies.txt");
+  if (fs.existsSync(cookieFile)) args.splice(0, 0, "--cookies", cookieFile);
+  const raw = await ytdlp.execPromise(args);
   return String(raw)
     .split("\n")
     .filter(Boolean)
